@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -50,6 +51,7 @@ func (s *RedtapeSuite) TestBPolicies() {
 	}{
 		{
 			opts: NewPolicyOptions(
+				PolicyID(uuid.NewString()),
 				PolicyName("test_policy"),
 				PolicyDescription("just a test"),
 				SetActions("create", "delete", "update", "read"),
@@ -87,6 +89,7 @@ func (s *RedtapeSuite) TestCEnforce() {
 
 	popts := []PolicyOptions{
 		{
+			ID:          uuid.NewString(),
 			Name:        "test_policy_allow",
 			Description: "testing",
 			Roles: []*Role{
@@ -110,6 +113,7 @@ func (s *RedtapeSuite) TestCEnforce() {
 			},
 		},
 		{
+			ID:          uuid.NewString(),
 			Name:        "test_policy",
 			Description: "testing",
 			Roles: []*Role{
