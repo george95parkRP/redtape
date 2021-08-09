@@ -32,6 +32,7 @@ func NewPolicyEffect(s string) PolicyEffect {
 // Policy provides methods to return data about a configured policy.
 type Policy interface {
 	ID() string
+	Name() string
 	Description() string
 	Roles() []*Role
 	Resources() []string
@@ -44,6 +45,7 @@ type Policy interface {
 
 type policy struct {
 	id         string
+	name       string
 	desc       string
 	roles      []*Role
 	resources  []string
@@ -59,11 +61,13 @@ func NewPolicy(opts ...PolicyOption) (Policy, error) {
 	o := NewPolicyOptions(opts...)
 
 	p := &policy{
-		id:        o.Name,
+		id:        o.ID,
+		name:      o.Name,
 		desc:      o.Description,
 		roles:     o.Roles,
 		resources: o.Resources,
 		actions:   o.Actions,
+		scopes:    o.Scopes,
 		effect:    NewPolicyEffect(o.Effect),
 		ctx:       o.Context,
 	}
@@ -92,11 +96,13 @@ func MustNewPolicy(opts ...PolicyOption) Policy {
 // MarshalJSON returns a JSON byte slice representation of the default policy implementation.
 func (p *policy) MarshalJSON() ([]byte, error) {
 	opts := PolicyOptions{
-		Name:        p.id,
+		ID:          p.id,
+		Name:        p.name,
 		Description: p.desc,
 		Roles:       p.roles,
 		Resources:   p.resources,
 		Actions:     p.actions,
+		Scopes:      p.scopes,
 		Effect:      string(p.effect),
 	}
 
@@ -121,6 +127,11 @@ func (p *policy) MarshalJSON() ([]byte, error) {
 // ID returns the policy ID.
 func (p *policy) ID() string {
 	return p.id
+}
+
+// Name returns the policy Name.
+func (p *policy) Name() string {
+	return p.name
 }
 
 // Description returns the policy Description.
@@ -164,6 +175,7 @@ func (p *policy) Effect() PolicyEffect {
 
 // PolicyOptions struct allows different Policy implementations to be configured with marshalable data.
 type PolicyOptions struct {
+	ID          string             `json:"id"`
 	Name        string             `json:"name"`
 	Description string             `json:"description"`
 	Roles       []*Role            `json:"roles"`
@@ -193,6 +205,13 @@ func NewPolicyOptions(opts ...PolicyOption) PolicyOptions {
 func SetPolicyOptions(opts PolicyOptions) PolicyOption {
 	return func(o *PolicyOptions) {
 		*o = opts
+	}
+}
+
+// PolicyID sets the policy ID Option.
+func PolicyID(id string) PolicyOption {
+	return func(o *PolicyOptions) {
+		o.ID = id
 	}
 }
 

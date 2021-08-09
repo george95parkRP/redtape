@@ -10,6 +10,7 @@ import (
 type Error struct {
 	code   int
 	id     string
+	name   string
 	reason string
 	status string
 	error
@@ -23,6 +24,11 @@ func (e *Error) StatusCode() int {
 // RequestID allows errors to be tracked against custom request ids.
 func (e *Error) RequestID() string {
 	return e.id
+}
+
+// RequestName allows errors to be tracked against custom request names.
+func (e *Error) RequestName() string {
+	return e.name
 }
 
 // Status is a text explanation of the error code.
@@ -40,6 +46,7 @@ func NewErrRequestDeniedExplicit(p Policy) error {
 	return errors.WithStack(&Error{
 		error:  errors.New("access denied"),
 		id:     p.ID(),
+		name:   p.Name(),
 		code:   http.StatusForbidden,
 		status: http.StatusText(http.StatusForbidden),
 		reason: "request denied because a policy explicitly forbids it",

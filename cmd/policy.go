@@ -45,6 +45,7 @@ func policyBuildAction(ctx *cli.Context) error {
 }
 
 type surveyPolicy struct {
+	ID          string
 	Name        string
 	Description string
 	Roles       []string
@@ -95,6 +96,7 @@ func newPolicySurvey() (*redtape.PolicyOptions, error) {
 
 func (p surveyPolicy) build() redtape.PolicyOptions {
 	return redtape.NewPolicyOptions(
+		redtape.PolicyID(p.ID),
 		redtape.PolicyName(p.Name),
 		redtape.PolicyDescription(p.Description),
 		redtape.SetResources(p.Resources...),

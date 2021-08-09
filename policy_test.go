@@ -4,6 +4,8 @@ import (
 	"context"
 	"reflect"
 	"testing"
+
+	"github.com/google/uuid"
 )
 
 func newConditions() Conditions {
@@ -27,8 +29,11 @@ func newConditions() Conditions {
 }
 
 func Test_policy_MarshalJSON(t *testing.T) {
+	id := uuid.New().String()
+
 	type fields struct {
 		id         string
+		name       string
 		desc       string
 		roles      []*Role
 		resources  []string
@@ -46,7 +51,8 @@ func Test_policy_MarshalJSON(t *testing.T) {
 		{
 			name: "test_marshal",
 			fields: fields{
-				id:   "test_policy",
+				id:   id,
+				name: "test_policy",
 				desc: "testing policy",
 				roles: []*Role{
 					NewRole("test_role"),
@@ -60,7 +66,7 @@ func Test_policy_MarshalJSON(t *testing.T) {
 				conditions: newConditions(),
 				effect:     PolicyEffectAllow,
 			},
-			want:    []byte(`{"name":"test_policy","description":"testing policy","roles":[{"id":"test_role","name":"","description":"","roles":null}],"resources":["test_res"],"actions":["test_action"],"scopes":null,"conditions":[{"name":"let-me-in","type":"bool","options":{"value":true}}],"effect":"allow"}`),
+			want:    []byte(`{"id":"` + id + `","name":"test_policy","description":"testing policy","roles":[{"id":"test_role","name":"","description":"","roles":null}],"resources":["test_res"],"actions":["test_action"],"scopes":null,"conditions":[{"name":"let-me-in","type":"bool","options":{"value":true}}],"effect":"allow"}`),
 			wantErr: false,
 		},
 	}
@@ -68,6 +74,7 @@ func Test_policy_MarshalJSON(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &policy{
 				id:         tt.fields.id,
+				name:       tt.fields.name,
 				desc:       tt.fields.desc,
 				roles:      tt.fields.roles,
 				resources:  tt.fields.resources,
