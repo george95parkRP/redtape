@@ -1,5 +1,59 @@
 package redtape
 
+import (
+	"errors"
+
+	"github.com/blushft/redtape/role"
+)
+
+type Subject interface {
+	Type() string
+	Enforcer() EnforceFunc
+}
+
+type subject struct {
+	ID    string                 `json:"id"`
+	Name  string                 `json:"name"`
+	Roles []*role.Role           `json:"roles"`
+	Meta  map[string]interface{} `json:"meta"`
+}
+
+func (s *subject) Enforce(req *Request) error {
+	for _, r := range s.EffectiveRoles() {
+		if r.ID == "test" {
+			return nil
+		}
+	}
+
+	return NewErrRequestDeniedImplicit(errors.New("access denied because no roles match assignement"))
+}
+
+func NewSubject(id string, opts ...SubjectOption) Subject {
+	sub := &subject{
+		ID:   id,
+		Meta: make(map[string]interface{}),
+	}
+
+	for _, opt := range opts {
+		opt(sub)
+	}
+
+	return sub
+}
+
+func (s *subject) EffectiveRoles() []*role.Role {
+	var er []*role.Role
+	for _, r := range s.Roles {
+		er = append(er, r.EffectiveRoles()...)
+	}
+
+	return er
+}
+
+func (s *subject) String() string {
+	return s.ID
+}
+
 type SubjectOption func(*Subject)
 
 func SubjectName(n string) SubjectOption {
@@ -8,7 +62,7 @@ func SubjectName(n string) SubjectOption {
 	}
 }
 
-func SubjectRole(role ...*Role) SubjectOption {
+func SubjectRole(role ...*role.Role) SubjectOption {
 	return func(s *Subject) {
 		s.Roles = append(s.Roles, role...)
 	}
@@ -26,37 +80,4 @@ func SubjectMeta(meta ...map[string]interface{}) SubjectOption {
 			}
 		}
 	}
-}
-
-type Subject struct {
-	ID    string                 `json:"id"`
-	Name  string                 `json:"name"`
-	Roles []*Role                `json:"roles"`
-	Meta  map[string]interface{} `json:"meta"`
-}
-
-func NewSubject(id string, opts ...SubjectOption) Subject {
-	sub := Subject{
-		ID:   id,
-		Meta: make(map[string]interface{}),
-	}
-
-	for _, opt := range opts {
-		opt(&sub)
-	}
-
-	return sub
-}
-
-func (s Subject) EffectiveRoles() []*Role {
-	var er []*Role
-	for _, r := range s.Roles {
-		er = append(er, r.EffectiveRoles()...)
-	}
-
-	return er
-}
-
-func (s Subject) String() string {
-	return s.ID
 }

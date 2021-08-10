@@ -1,4 +1,4 @@
-package sqlmanager
+package sql
 
 import (
 	"context"
@@ -395,8 +395,6 @@ func getTypeAndVal(val interface{}) (string, bool) {
 	switch v := val.(type) {
 	case *redtape.BoolCondition:
 		return v.Name(), v.Value
-	case *redtape.RoleEqualsCondition:
-		return v.Name(), false
 	default:
 		return "", false
 	}

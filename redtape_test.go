@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/blushft/redtape/role"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 )
@@ -14,34 +15,6 @@ type RedtapeSuite struct {
 
 func TestRedtapeSuite(t *testing.T) {
 	suite.Run(t, new(RedtapeSuite))
-}
-
-func (s *RedtapeSuite) TestARoles() {
-	subRole := NewRole("sub_role")
-	table := []struct {
-		role *Role
-	}{
-		{
-			role: NewRole("test_role"),
-		},
-	}
-
-	for _, tt := range table {
-		err := tt.role.AddRole(subRole)
-		s.NoError(err)
-
-		eff := tt.role.EffectiveRoles()
-		s.Greater(len(eff), 1)
-
-		err = tt.role.AddRole(tt.role)
-		s.Error(err, "should not be able to add subrole that matches parent")
-		err = tt.role.AddRole(subRole)
-		s.Error(err, "should not be able to add duplicate subrole")
-
-		b, err := MatchRole(tt.role, "test*")
-		s.NoError(err)
-		s.True(b)
-	}
 }
 
 func (s *RedtapeSuite) TestBPolicies() {
@@ -63,7 +36,7 @@ func (s *RedtapeSuite) TestBPolicies() {
 						"value": true,
 					},
 				}),
-				WithRole(NewRole("allow_test")),
+				WithSubject(NewSubject("allow_test")),
 			),
 		},
 	}
@@ -83,17 +56,17 @@ func (s *RedtapeSuite) TestCEnforce() {
 	m := NewMatcher()
 	pm := NewPolicyManager()
 
-	allow := NewRole("test.A")
-	deny := NewRole("test.B")
+	allow := role.New("test.A")
+	deny := role.New("test.B")
 
 	subA := Subject{
 		ID:    uuid.NewString(),
-		Roles: []*Role{allow},
+		Roles: []*role.Role{allow},
 	}
 
 	subB := Subject{
 		ID:    uuid.NewString(),
-		Roles: []*Role{deny},
+		Roles: []*role.Role{deny},
 	}
 
 	popts := []PolicyOptions{
@@ -101,8 +74,8 @@ func (s *RedtapeSuite) TestCEnforce() {
 			ID:          uuid.NewString(),
 			Name:        "test_policy_allow",
 			Description: "testing",
-			Roles: []*Role{
-				allow,
+			Subjects: []*Subject{
+				&subA,
 			},
 			Resources: []string{
 				"test_resource",
@@ -125,8 +98,8 @@ func (s *RedtapeSuite) TestCEnforce() {
 			ID:          uuid.NewString(),
 			Name:        "test_policy",
 			Description: "testing",
-			Roles: []*Role{
-				deny,
+			Subjects: []*Subject{
+				&subB,
 			},
 			Resources: []string{
 				"test_resource",

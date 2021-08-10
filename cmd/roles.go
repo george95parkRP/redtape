@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/blushft/redtape"
+	"github.com/blushft/redtape/role"
 	"github.com/urfave/cli/v2"
 )
 
@@ -50,7 +50,7 @@ type surveyRole struct {
 	Description string
 }
 
-func newRoleSurvey() (*redtape.Role, error) {
+func newRoleSurvey() (*role.Role, error) {
 	q := []*survey.Question{
 		{
 			Name:      "id",
@@ -74,7 +74,7 @@ func newRoleSurvey() (*redtape.Role, error) {
 		return nil, err
 	}
 
-	return &redtape.Role{
+	return &role.Role{
 		ID:          a.ID,
 		Name:        a.Name,
 		Description: a.Description,

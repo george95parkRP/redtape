@@ -1,4 +1,4 @@
-package sqlmanager
+package sql
 
 import (
 	"reflect"

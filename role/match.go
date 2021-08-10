@@ -1,12 +1,16 @@
-package redtape
+package role
 
 import (
 	"github.com/blushft/redtape/match"
 )
 
-// Matcher provides methods to facilitate matching policies to different request elements.
+func Match(r *Role, val string) (bool, error) {
+	m := &simpleMatcher{}
+	return m.Match(r, val)
+}
+
 type Matcher interface {
-	MatchPolicy(p Policy, def []string, val string) (bool, error)
+	Match(r *Role, val string) (bool, error)
 }
 
 type simpleMatcher struct{}
@@ -16,15 +20,12 @@ func NewMatcher() Matcher {
 	return &simpleMatcher{}
 }
 
-// MatchPolicy evaluates true when the provided val wildcard matches at least one element in def.
-// If def is nil, a match is assumed against any value.
-func (m *simpleMatcher) MatchPolicy(p Policy, def []string, val string) (bool, error) {
-	if def == nil {
-		return true, nil
-	}
+// Match evaluates true when the provided val wildcard matches at least one role in Role#EffectiveRoles.
+func (m *simpleMatcher) Match(r *Role, val string) (bool, error) {
+	er := r.EffectiveRoles()
 
-	for _, h := range def {
-		if match.Wildcard(h, val) {
+	for _, rr := range er {
+		if match.Wildcard(val, rr.ID) {
 			return true, nil
 		}
 	}
@@ -43,8 +44,15 @@ func NewRegexMatcher() Matcher {
 	}
 }
 
-// MatchPolicy evaluates true when the provided val regex matches at least one element in def.
-func (m *regexMatcher) MatchPolicy(p Policy, def []string, val string) (bool, error) {
+// MatchRole evaluates true when the provided val regex matches at least one role in Role#EffectiveRoles.
+func (m *regexMatcher) Match(r *Role, val string) (bool, error) {
+	ef := r.EffectiveRoles()
+
+	def := make([]string, 0, len(ef))
+	for _, rr := range ef {
+		def = append(def, rr.ID)
+	}
+
 	return m.match(def, val)
 }
 

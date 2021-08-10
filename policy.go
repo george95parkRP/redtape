@@ -34,7 +34,7 @@ type Policy interface {
 	ID() string
 	Name() string
 	Description() string
-	Roles() []*Role
+	Subjects() []*Subject
 	Resources() []string
 	Actions() []string
 	Scopes() []string
@@ -47,7 +47,7 @@ type policy struct {
 	id         string
 	name       string
 	desc       string
-	roles      []*Role
+	subjects   []*Subject
 	resources  []string
 	actions    []string
 	scopes     []string
@@ -64,7 +64,7 @@ func NewPolicy(opts ...PolicyOption) (Policy, error) {
 		id:        o.ID,
 		name:      o.Name,
 		desc:      o.Description,
-		roles:     o.Roles,
+		subjects:  o.Subjects,
 		resources: o.Resources,
 		actions:   o.Actions,
 		scopes:    o.Scopes,
@@ -99,7 +99,7 @@ func (p *policy) MarshalJSON() ([]byte, error) {
 		ID:          p.id,
 		Name:        p.name,
 		Description: p.desc,
-		Roles:       p.roles,
+		Subjects:    p.subjects,
 		Resources:   p.resources,
 		Actions:     p.actions,
 		Scopes:      p.scopes,
@@ -140,8 +140,8 @@ func (p *policy) Description() string {
 }
 
 // Roles returns the roles the policy applies to.
-func (p *policy) Roles() []*Role {
-	return p.roles
+func (p *policy) Subjects() []*Subject {
+	return p.subjects
 }
 
 // Resources returns the resources the policy applies to.
@@ -178,7 +178,7 @@ type PolicyOptions struct {
 	ID          string             `json:"id"`
 	Name        string             `json:"name"`
 	Description string             `json:"description"`
-	Roles       []*Role            `json:"roles"`
+	Subjects    []*Subject         `json:"roles"`
 	Resources   []string           `json:"resources"`
 	Actions     []string           `json:"actions"`
 	Scopes      []string           `json:"scopes"`
@@ -284,8 +284,8 @@ func WithCondition(co ConditionOptions) PolicyOption {
 }
 
 // WithRole adds a Role to the Roles option.
-func WithRole(r *Role) PolicyOption {
+func WithSubject(s *Subject) PolicyOption {
 	return func(o *PolicyOptions) {
-		o.Roles = append(o.Roles, r)
+		o.Subjects = append(o.Subjects, s)
 	}
 }

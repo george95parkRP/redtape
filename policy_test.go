@@ -35,7 +35,7 @@ func Test_policy_MarshalJSON(t *testing.T) {
 		id         string
 		name       string
 		desc       string
-		roles      []*Role
+		subjects   []*Subject
 		resources  []string
 		actions    []string
 		conditions Conditions
@@ -54,8 +54,8 @@ func Test_policy_MarshalJSON(t *testing.T) {
 				id:   id,
 				name: "test_policy",
 				desc: "testing policy",
-				roles: []*Role{
-					NewRole("test_role"),
+				subjects: []*Subject{
+					NewSubject("tester"),
 				},
 				resources: []string{
 					"test_res",
@@ -66,7 +66,7 @@ func Test_policy_MarshalJSON(t *testing.T) {
 				conditions: newConditions(),
 				effect:     PolicyEffectAllow,
 			},
-			want:    []byte(`{"id":"` + id + `","name":"test_policy","description":"testing policy","roles":[{"id":"test_role","name":"","description":"","roles":null}],"resources":["test_res"],"actions":["test_action"],"scopes":null,"conditions":[{"name":"let-me-in","type":"bool","options":{"value":true}}],"effect":"allow"}`),
+			want:    []byte(`{"id":"` + id + `","name":"test_policy","description":"testing policy","subjects":[{"id":"test_role","name":"","description":"","roles":null}],"resources":["test_res"],"actions":["test_action"],"scopes":null,"conditions":[{"name":"let-me-in","type":"bool","options":{"value":true}}],"effect":"allow"}`),
 			wantErr: false,
 		},
 	}
@@ -76,7 +76,7 @@ func Test_policy_MarshalJSON(t *testing.T) {
 				id:         tt.fields.id,
 				name:       tt.fields.name,
 				desc:       tt.fields.desc,
-				roles:      tt.fields.roles,
+				subjects:   tt.fields.subjects,
 				resources:  tt.fields.resources,
 				actions:    tt.fields.actions,
 				conditions: tt.fields.conditions,

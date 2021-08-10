@@ -4,6 +4,8 @@ import (
 	"errors"
 )
 
+type EnforceFunc func(*Request) error
+
 // Enforcer interface provides methods to enforce policies against a request.
 type Enforcer interface {
 	Enforce(*Request) error
@@ -16,12 +18,12 @@ type enforcer struct {
 }
 
 // NewEnforcer returns a default Enforcer combining a PolicyManager, Matcher, and Auditor.
-func NewEnforcer(manager PolicyManager, matcher Matcher, auditor Auditor) (Enforcer, error) {
+func NewEnforcer(manager PolicyManager, matcher Matcher, auditor Auditor) Enforcer {
 	return &enforcer{
 		manager: manager,
 		matcher: matcher,
 		auditor: auditor,
-	}, nil
+	}
 }
 
 func NewDefaultEnforcer(manager PolicyManager) (Enforcer, error) {
@@ -88,7 +90,7 @@ func (e *enforcer) evalPolicy(r *Request, p Policy) (bool, error) {
 
 	rm := false
 	// match roles
-	for _, role := range p.Roles() {
+	for _, role := range p.Subjects() {
 		for _, sr := range r.Subject.EffectiveRoles() {
 			b, err := e.matcher.MatchRole(role, sr.ID)
 			if err != nil {

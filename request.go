@@ -4,55 +4,12 @@ import "context"
 
 type RequestContextKey struct{}
 
-type RequestOption func(*Request)
-
-func RequestResource(res string) RequestOption {
-	return func(r *Request) {
-		r.Resource = res
-	}
-}
-
-func RequestAction(action string) RequestOption {
-	return func(r *Request) {
-		r.Action = action
-	}
-}
-
-func RequestSubject(sub Subject) RequestOption {
-	return func(r *Request) {
-		r.Subject = sub
-	}
-}
-
-func RequestScope(s string) RequestOption {
-	return func(r *Request) {
-		r.Scope = s
-	}
-}
-
-func RequestContext(ctx context.Context, meta ...map[string]interface{}) RequestOption {
-	return func(r *Request) {
-		r.Context = NewRequestContext(ctx, meta...)
-	}
-}
-
-func WithMetadata(meta ...map[string]interface{}) RequestOption {
-	return func(r *Request) {
-		if r.Context == nil {
-			r.Context = NewRequestContext(context.Background(), meta...)
-			return
-		}
-
-		r.AddMetadata(meta...)
-	}
-}
-
 // Request represents a request to be matched against a policy set.
 type Request struct {
 	Resource string          `json:"resource"`
 	Action   string          `json:"action"`
-	Subject  Subject         `json:"subject"`
 	Scope    string          `json:"scope"`
+	Subject  Subject         `json:"subject"`
 	Context  context.Context `json:"-"`
 }
 
@@ -124,4 +81,47 @@ func RequestMetadataFromContext(ctx context.Context) RequestMetadata {
 	}
 
 	return md.(RequestMetadata)
+}
+
+type RequestOption func(*Request)
+
+func RequestResource(res string) RequestOption {
+	return func(r *Request) {
+		r.Resource = res
+	}
+}
+
+func RequestAction(action string) RequestOption {
+	return func(r *Request) {
+		r.Action = action
+	}
+}
+
+func RequestSubject(sub Subject) RequestOption {
+	return func(r *Request) {
+		r.Subject = sub
+	}
+}
+
+func RequestScope(s string) RequestOption {
+	return func(r *Request) {
+		r.Scope = s
+	}
+}
+
+func RequestContext(ctx context.Context, meta ...map[string]interface{}) RequestOption {
+	return func(r *Request) {
+		r.Context = NewRequestContext(ctx, meta...)
+	}
+}
+
+func WithMetadata(meta ...map[string]interface{}) RequestOption {
+	return func(r *Request) {
+		if r.Context == nil {
+			r.Context = NewRequestContext(context.Background(), meta...)
+			return
+		}
+
+		r.AddMetadata(meta...)
+	}
 }

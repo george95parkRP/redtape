@@ -1,4 +1,4 @@
-package redtape
+package role
 
 import (
 	"fmt"
@@ -16,8 +16,8 @@ type Role struct {
 	Roles       []*Role `json:"roles"`
 }
 
-// NewRole returns a Role configured with the provided options.
-func NewRole(id string, roles ...*Role) *Role {
+// New returns a Role configured with the provided options.
+func New(id string, roles ...*Role) *Role {
 	return &Role{
 		ID:    id,
 		Roles: roles,

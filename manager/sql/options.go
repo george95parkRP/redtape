@@ -1,4 +1,4 @@
-package sqlmanager
+package sql
 
 type SqlManagerOptions struct {
 	Dialect    string

@@ -4,19 +4,18 @@ import (
 	"os"
 	"testing"
 
-	"github.com/blushft/redtape"
-	"github.com/blushft/redtape/manager/file"
+	"github.com/blushft/redtape/role"
+	"github.com/blushft/redtape/role/file"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestFileRoleManager(t *testing.T) {
-	f := file.New()
-	rm, err := f.RoleManager()
+	rm, err := file.New()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	r := redtape.NewRole("test_role")
+	r := role.New("test_role")
 	if err := rm.Create(r); err != nil {
 		t.Fatal(err)
 	}
@@ -47,7 +46,7 @@ func TestFileRoleManager(t *testing.T) {
 
 	assert.Len(t, all, 1)
 
-	if err := os.Remove(f.RolePath()); err != nil {
+	if err := os.Remove(rm.RolePath()); err != nil {
 		t.Fatal(err)
 	}
 }
