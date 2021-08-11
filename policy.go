@@ -34,7 +34,7 @@ type Policy interface {
 	ID() string
 	Name() string
 	Description() string
-	Subjects() []*Subject
+	Subjects() []Subject
 	Resources() []string
 	Actions() []string
 	Scopes() []string
@@ -47,7 +47,7 @@ type policy struct {
 	id         string
 	name       string
 	desc       string
-	subjects   []*Subject
+	subjects   []Subject
 	resources  []string
 	actions    []string
 	scopes     []string
@@ -140,7 +140,7 @@ func (p *policy) Description() string {
 }
 
 // Roles returns the roles the policy applies to.
-func (p *policy) Subjects() []*Subject {
+func (p *policy) Subjects() []Subject {
 	return p.subjects
 }
 
@@ -178,7 +178,7 @@ type PolicyOptions struct {
 	ID          string             `json:"id"`
 	Name        string             `json:"name"`
 	Description string             `json:"description"`
-	Subjects    []*Subject         `json:"roles"`
+	Subjects    []Subject          `json:"roles"`
 	Resources   []string           `json:"resources"`
 	Actions     []string           `json:"actions"`
 	Scopes      []string           `json:"scopes"`
@@ -283,8 +283,8 @@ func WithCondition(co ConditionOptions) PolicyOption {
 	}
 }
 
-// WithRole adds a Role to the Roles option.
-func WithSubject(s *Subject) PolicyOption {
+// WithSubject adds a Subject to the Subjects option.
+func WithSubject(s Subject) PolicyOption {
 	return func(o *PolicyOptions) {
 		o.Subjects = append(o.Subjects, s)
 	}
