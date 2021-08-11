@@ -1,5 +1,10 @@
 package redtape
 
+import (
+	"errors"
+	"fmt"
+)
+
 type Engine interface {
 	Verify(*Request) error
 	Grant(Policy) error
@@ -7,14 +12,14 @@ type Engine interface {
 	List() ([]Policy, error)
 
 	// TODO: allow adds
-	//RegisterCondition(name string, ctor ConditionBuilder)
+	RegisterCondition(string, ConditionBuilder) error
 }
 
 type engine struct {
 	mgr      PolicyManager
 	enforcer Enforcer
 	auditor  Auditor
-	cond     ConditionRegistry
+	conds    ConditionRegistry
 }
 
 func NewEngine(mgr PolicyManager, opts ...EngineOption) Engine {
@@ -28,7 +33,7 @@ func newEngine(mgr PolicyManager, opts ...EngineOption) *engine {
 		mgr:      mgr,
 		enforcer: NewEnforcer(mgr, options.Matcher, options.Auditor),
 		auditor:  options.Auditor,
-		cond:     options.Registry,
+		conds:    options.Registry,
 	}
 }
 
@@ -46,6 +51,16 @@ func (e *engine) Revoke(p string) error {
 
 func (e *engine) List() ([]Policy, error) {
 	return e.mgr.All()
+}
+
+func (e *engine) RegisterCondition(name string, ctor ConditionBuilder) error {
+	if val, ok := e.conds[name]; ok {
+		return errors.New(fmt.Sprintf("Condition already in registry with key %s and value %v", name, val))
+	}
+
+	e.conds[name] = ctor
+
+	return nil
 }
 
 type EngineOptions struct {

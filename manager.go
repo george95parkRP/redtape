@@ -102,7 +102,39 @@ func (m *defaultPolicyManager) findAll() ([]Policy, error) {
 
 // FindByRequest returns all policies matching a Request.
 func (m *defaultPolicyManager) FindByRequest(r *Request) ([]Policy, error) {
-	return m.findAll()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	ps := []Policy{}
+	for _, p := range m.policies {
+		if found := findByResource(r.Resource, p.Resources()); !found {
+			continue
+		}
+
+		if found := findByScope(r.Scope, p.Scopes()); !found {
+			continue
+		}
+
+		if found := findByAction(r.Action, p.Actions()); !found {
+			continue
+		}
+
+		// find by subject/context?
+
+		ps = append(ps, p)
+	}
+
+	return ps, nil
+}
+
+func findByAction(act string, actions []string) bool {
+	for _, a := range actions {
+		if a == act {
+			return true
+		}
+	}
+
+	return false
 }
 
 // FindByRole returns all policies matching a Role.
@@ -111,13 +143,55 @@ func (m *defaultPolicyManager) FindByRole(_ string) ([]Policy, error) {
 }
 
 // FindByResource returns all policies matching a Resource.
-func (m *defaultPolicyManager) FindByResource(_ string) ([]Policy, error) {
-	return m.findAll()
+func (m *defaultPolicyManager) FindByResource(res string) ([]Policy, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	ps := []Policy{}
+	for _, p := range m.policies {
+		if found := findByResource(res, p.Resources()); found {
+			ps = append(ps, p)
+			break
+		}
+	}
+
+	return ps, nil
+}
+
+func findByResource(res string, resources []string) bool {
+	for _, r := range resources {
+		if r == res {
+			return true
+		}
+	}
+
+	return false
 }
 
 // FindByResource returns all policies matching a Resource.
-func (m *defaultPolicyManager) FindByScope(_ string) ([]Policy, error) {
-	return m.findAll()
+func (m *defaultPolicyManager) FindByScope(scope string) ([]Policy, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	ps := []Policy{}
+	for _, p := range m.policies {
+		if found := findByScope(scope, p.Scopes()); found {
+			ps = append(ps, p)
+			break
+		}
+	}
+
+	return ps, nil
+}
+
+func findByScope(scope string, scopes []string) bool {
+	for _, s := range scopes {
+		if s == scope {
+			return true
+		}
+	}
+
+	return false
 }
 
 type policyCache struct {
