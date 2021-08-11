@@ -26,7 +26,7 @@ func NewEnforcer(manager PolicyManager, matcher Matcher, auditor Auditor) Enforc
 	}
 }
 
-func NewDefaultEnforcer(manager PolicyManager) (Enforcer, error) {
+func NewDefaultEnforcer(manager PolicyManager) Enforcer {
 	return NewEnforcer(manager, DefaultMatcher, NewConsoleAuditor(AuditAll))
 }
 
@@ -90,19 +90,27 @@ func (e *enforcer) evalPolicy(r *Request, p Policy) (bool, error) {
 
 	rm := false
 	// match roles
-	for _, role := range p.Subjects() {
+	for _, ps := range p.Subjects() {
 		for _, sr := range r.Subject.EffectiveRoles() {
-			b, err := e.matcher.MatchRole(role, sr.ID)
-			if err != nil {
-				return false, err
-			}
-
-			if b {
+			if ps.MatchRole(sr.ID) {
 				rm = true
 				break
 			}
 		}
 	}
+	// for _, role := range p.Subjects() {
+	// 	for _, sr := range r.Subject.EffectiveRoles() {
+	// 		b, err := e.matcher.MatchRole(role, sr.ID)
+	// 		if err != nil {
+	// 			return false, err
+	// 		}
+
+	// 		if b {
+	// 			rm = true
+	// 			break
+	// 		}
+	// 	}
+	// }
 
 	if !rm {
 		return false, nil
