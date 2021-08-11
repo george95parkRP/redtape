@@ -59,29 +59,35 @@ func (s *RedtapeSuite) TestCEnforce() {
 	allow := role.New("test.A")
 	deny := role.New("test.B")
 
-	subA := Subject{
-		ID:    uuid.NewString(),
-		Roles: []*role.Role{allow},
-	}
+	subA := NewSubject(
+		uuid.NewString(),
+		SubjectRole(allow),
+		SubjectEnforcer(func(r *Request) error {
+			return nil
+		}),
+	)
 
-	subB := Subject{
-		ID:    uuid.NewString(),
-		Roles: []*role.Role{deny},
-	}
+	subB := NewSubject(
+		uuid.NewString(),
+		SubjectRole(deny),
+	)
 
 	popts := []PolicyOptions{
 		{
 			ID:          uuid.NewString(),
 			Name:        "test_policy_allow",
 			Description: "testing",
-			Subjects: []*Subject{
-				&subA,
+			Subjects: []Subject{
+				subA,
 			},
 			Resources: []string{
 				"test_resource",
 			},
 			Actions: []string{
 				"test",
+			},
+			Scopes: []string{
+				"test_scope",
 			},
 			Effect: "allow",
 			Conditions: []ConditionOptions{
@@ -98,14 +104,17 @@ func (s *RedtapeSuite) TestCEnforce() {
 			ID:          uuid.NewString(),
 			Name:        "test_policy",
 			Description: "testing",
-			Subjects: []*Subject{
-				&subB,
+			Subjects: []Subject{
+				subB,
 			},
 			Resources: []string{
 				"test_resource",
 			},
 			Actions: []string{
 				"test",
+			},
+			Scopes: []string{
+				"test_scope",
 			},
 			Effect: "deny",
 			Conditions: []ConditionOptions{
@@ -125,19 +134,19 @@ func (s *RedtapeSuite) TestCEnforce() {
 		s.Require().NoError(err)
 	}
 
-	e, err := NewEnforcer(pm, m, nil)
-	s.Require().NoError(err)
+	e := NewEnforcer(pm, m, nil)
 
 	req := &Request{
 		Resource: "test_resource",
 		Action:   "test",
+		Scope:    "test_scope",
 		Subject:  subA,
 		Context: NewRequestContext(context.TODO(), map[string]interface{}{
 			"match_me": true,
 		}),
 	}
 
-	err = e.Enforce(req)
+	err := e.Enforce(req)
 	s.Require().NoError(err, "should be allowed")
 
 	req.Subject = subB

@@ -35,7 +35,7 @@ func Test_policy_MarshalJSON(t *testing.T) {
 		id         string
 		name       string
 		desc       string
-		subjects   []*Subject
+		subjects   []Subject
 		resources  []string
 		actions    []string
 		conditions Conditions
@@ -54,7 +54,7 @@ func Test_policy_MarshalJSON(t *testing.T) {
 				id:   id,
 				name: "test_policy",
 				desc: "testing policy",
-				subjects: []*Subject{
+				subjects: []Subject{
 					NewSubject("tester"),
 				},
 				resources: []string{
