@@ -41,12 +41,12 @@ func (e *enforcer) Enforce(r *Request) error {
 
 	e.auditReq(r)
 
-	pol, err := e.manager.FindByRequest(r)
+	pols, err := e.manager.FindByRequest(r)
 	if err != nil {
 		return err
 	}
 
-	for _, p := range pol {
+	for _, p := range pols {
 		match, err := e.evalPolicy(r, p)
 		if err != nil {
 			return err
@@ -88,34 +88,6 @@ func (e *enforcer) evalPolicy(r *Request, p Policy) (bool, error) {
 		return false, nil
 	}
 
-	rm := false
-	// match roles
-	for _, ps := range p.Subjects() {
-		for _, sr := range r.Subject.EffectiveRoles() {
-			if ps.MatchRole(sr.ID) {
-				rm = true
-				break
-			}
-		}
-	}
-	// for _, role := range p.Subjects() {
-	// 	for _, sr := range r.Subject.EffectiveRoles() {
-	// 		b, err := e.matcher.MatchRole(role, sr.ID)
-	// 		if err != nil {
-	// 			return false, err
-	// 		}
-
-	// 		if b {
-	// 			rm = true
-	// 			break
-	// 		}
-	// 	}
-	// }
-
-	if !rm {
-		return false, nil
-	}
-
 	// match resources
 	resm, err := e.matcher.MatchPolicy(p, p.Resources(), r.Resource)
 	if err != nil {
@@ -134,8 +106,20 @@ func (e *enforcer) evalPolicy(r *Request, p Policy) (bool, error) {
 		return false, nil
 	}
 
-	// check all conditions
-	if !p.Conditions().Meets(r) {
+	// find the subject
+	// check conditions
+	// TODO: could there be more than one subject with the same type ?
+	condMeets := false
+	for _, sub := range p.Subjects() {
+		if sub.Type() == r.Subject.Type() {
+			if sub.Conditions().Meets(r) {
+				condMeets = true
+				break
+			}
+		}
+	}
+
+	if !condMeets {
 		return false, nil
 	}
 
