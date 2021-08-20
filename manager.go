@@ -119,8 +119,6 @@ func (m *defaultPolicyManager) FindByRequest(r *Request) ([]Policy, error) {
 			continue
 		}
 
-		// find by subject/context?
-
 		ps = append(ps, p)
 	}
 
