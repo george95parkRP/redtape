@@ -104,22 +104,22 @@ func (c *BoolCondition) Meets(val interface{}, _ *Request) bool {
 	return ok && v == c.Value
 }
 
-// RoleEqualsCondition matches the Request role against the required role passed to the condition.
+// SubjectEqualsCondition matches the Request subject against the required subject passed to the condition.
 type SubjectEqualsCondition struct{}
 
 // Name fulfills the Name method of Condition.
 func (c *SubjectEqualsCondition) Name() string {
-	return "role_equals"
+	return "subject_equals"
 }
 
-// Meets evaluates true when the role val matches Request#Role.
+// Meets evaluates true when the subject val matches Request#Subject.
 func (c *SubjectEqualsCondition) Meets(val interface{}, r *Request) bool {
 	switch v := val.(type) {
 	case string:
-		return v == r.Subject.ID()
+		return v == r.Subject.Type()
 	case []string:
 		for _, s := range v {
-			if s == r.Subject.ID() {
+			if s == r.Subject.Type() {
 				return true
 			}
 		}
