@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/blushft/redtape/role"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 )
@@ -18,6 +17,18 @@ func TestRedtapeSuite(t *testing.T) {
 }
 
 func (s *RedtapeSuite) TestBPolicies() {
+	sub, err := NewSubject(
+		"allow_test",
+		WithConditions(ConditionOptions{
+			Name: "test_cond",
+			Type: "bool",
+			Options: map[string]interface{}{
+				"value": true,
+			},
+		}),
+	)
+	s.Require().NoError(err)
+
 	table := []struct {
 		opts PolicyOptions
 	}{
@@ -29,14 +40,7 @@ func (s *RedtapeSuite) TestBPolicies() {
 				SetActions("create", "delete", "update", "read"),
 				SetResources("database"),
 				PolicyAllow(),
-				WithCondition(ConditionOptions{
-					Name: "test_cond",
-					Type: "bool",
-					Options: map[string]interface{}{
-						"value": true,
-					},
-				}),
-				WithSubject(NewSubject("allow_test")),
+				WithSubject(sub),
 			),
 		},
 	}
@@ -56,21 +60,14 @@ func (s *RedtapeSuite) TestCEnforce() {
 	m := NewMatcher()
 	pm := NewPolicyManager()
 
-	allow := role.New("test.A")
-	deny := role.New("test.B")
+	// allow := role.New("test.A")
+	// deny := role.New("test.B")
 
-	subA := NewSubject(
-		uuid.NewString(),
-		SubjectRole(allow),
-		SubjectEnforcer(func(r *Request) error {
-			return nil
-		}),
-	)
+	subA, err := NewSubject(uuid.NewString())
+	s.Require().NoError(err)
 
-	subB := NewSubject(
-		uuid.NewString(),
-		SubjectRole(deny),
-	)
+	subB, err := NewSubject(uuid.NewString())
+	s.Require().NoError(err)
 
 	popts := []PolicyOptions{
 		{
@@ -90,15 +87,6 @@ func (s *RedtapeSuite) TestCEnforce() {
 				"test_scope",
 			},
 			Effect: "allow",
-			Conditions: []ConditionOptions{
-				{
-					Name: "match_me",
-					Type: "bool",
-					Options: map[string]interface{}{
-						"value": true,
-					},
-				},
-			},
 		},
 		{
 			ID:          uuid.NewString(),
@@ -117,15 +105,6 @@ func (s *RedtapeSuite) TestCEnforce() {
 				"test_scope",
 			},
 			Effect: "deny",
-			Conditions: []ConditionOptions{
-				{
-					Name: "match_me",
-					Type: "bool",
-					Options: map[string]interface{}{
-						"value": true,
-					},
-				},
-			},
 		},
 	}
 
@@ -146,7 +125,7 @@ func (s *RedtapeSuite) TestCEnforce() {
 		}),
 	}
 
-	err := e.Enforce(req)
+	err = e.Enforce(req)
 	s.Require().NoError(err, "should be allowed")
 
 	req.Subject = subB

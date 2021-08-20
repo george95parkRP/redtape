@@ -31,6 +31,20 @@ func newConditions() Conditions {
 func Test_policy_MarshalJSON(t *testing.T) {
 	id := uuid.New().String()
 
+	sub, err := NewSubject(
+		"tester",
+		WithConditions(ConditionOptions{
+			Name: "let-me-in",
+			Type: "bool",
+			Options: map[string]interface{}{
+				"value": true,
+			},
+		}),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	type fields struct {
 		id         string
 		name       string
@@ -55,7 +69,7 @@ func Test_policy_MarshalJSON(t *testing.T) {
 				name: "test_policy",
 				desc: "testing policy",
 				subjects: []Subject{
-					NewSubject("tester"),
+					sub,
 				},
 				resources: []string{
 					"test_res",
@@ -73,15 +87,14 @@ func Test_policy_MarshalJSON(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &policy{
-				id:         tt.fields.id,
-				name:       tt.fields.name,
-				desc:       tt.fields.desc,
-				subjects:   tt.fields.subjects,
-				resources:  tt.fields.resources,
-				actions:    tt.fields.actions,
-				conditions: tt.fields.conditions,
-				effect:     tt.fields.effect,
-				ctx:        tt.fields.ctx,
+				id:        tt.fields.id,
+				name:      tt.fields.name,
+				desc:      tt.fields.desc,
+				subjects:  tt.fields.subjects,
+				resources: tt.fields.resources,
+				actions:   tt.fields.actions,
+				effect:    tt.fields.effect,
+				ctx:       tt.fields.ctx,
 			}
 			got, err := p.MarshalJSON()
 			if (err != nil) != tt.wantErr {

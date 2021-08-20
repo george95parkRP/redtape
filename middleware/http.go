@@ -14,11 +14,17 @@ func NewHTTPMiddleware(e redtape.Enforcer, h http.Handler) http.Handler {
 			meta[k] = r.Header.Get(k)
 		}
 
+		rs, err := requestSubject(r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
 		req := redtape.NewRequest(
 			redtape.RequestContext(r.Context(), meta),
 			redtape.RequestResource(r.URL.Path),
 			redtape.RequestAction(r.Method),
-			redtape.RequestSubject(requestSubject(r)))
+			redtape.RequestSubject(rs),
+		)
 
 		if err := e.Enforce(req); err != nil {
 			http.Error(w, err.Error(), http.StatusForbidden)
@@ -29,11 +35,15 @@ func NewHTTPMiddleware(e redtape.Enforcer, h http.Handler) http.Handler {
 	})
 }
 
-func requestSubject(r *http.Request) redtape.Subject {
-	return redtape.NewSubject(r.RemoteAddr,
-		redtape.SubjectName(r.UserAgent()),
-		redtape.SubjectMeta(map[string]interface{}{
-			"referer": r.Referer,
-		}),
-	)
+func requestSubject(r *http.Request) (redtape.Subject, error) {
+	sub, err := redtape.NewSubject(r.RemoteAddr) // redtape.SubjectName(r.UserAgent()),
+	// redtape.SubjectMeta(map[string]interface{}{
+	// 	"referer": r.Referer,
+	// }),
+
+	if err != nil {
+		return nil, err
+	}
+
+	return sub, err
 }
