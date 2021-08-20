@@ -11,7 +11,6 @@ type Engine interface {
 	Revoke(string) error
 	List() ([]Policy, error)
 
-	// TODO: allow adds
 	RegisterCondition(string, ConditionBuilder) error
 }
 
