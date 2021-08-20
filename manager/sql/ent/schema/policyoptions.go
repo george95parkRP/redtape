@@ -27,7 +27,6 @@ func (PolicyOptions) Fields() []ent.Field {
 // Edges of the PolicyOptions.
 func (PolicyOptions) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.To("roles", Roles.Type),
-		edge.To("conditions", Conditions.Type),
+		edge.To("subjects", Subjects.Type),
 	}
 }

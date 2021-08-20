@@ -23,7 +23,7 @@ func (Conditions) Fields() []ent.Field {
 // Edges of the Conditions.
 func (Conditions) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.From("policy", PolicyOptions.Type).
+		edge.From("subjects", Subjects.Type).
 			Ref("conditions").
 			Unique(),
 	}

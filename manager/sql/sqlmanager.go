@@ -6,10 +6,8 @@ import (
 	"fmt"
 
 	"github.com/blushft/redtape"
-	"github.com/blushft/redtape/sqlmanager/ent"
-	cent "github.com/blushft/redtape/sqlmanager/ent/conditions"
-	poent "github.com/blushft/redtape/sqlmanager/ent/policyoptions"
-	rent "github.com/blushft/redtape/sqlmanager/ent/roles"
+	"github.com/blushft/redtape/manager/sql/ent"
+	poent "github.com/blushft/redtape/manager/sql/ent/policyoptions"
 	_ "github.com/lib/pq"
 )
 
@@ -40,10 +38,10 @@ func NewSqlManager(opts ...SqlManagerOption) (redtape.PolicyManager, error) {
 
 // Create creates a policy in the database.
 func (pm *sqlPolicyMgr) Create(p redtape.Policy) error {
-	// Let's first insert roles/conditions in order to create the edges.
+	// Let's first insert subjects/conditions in order to create the edges.
 	ctx := context.Background()
 
-	roles, conditions, err := pm.createConditionsRoles(p.Roles(), p.Conditions(), ctx)
+	subs, err := pm.createSubjects(p.Subjects(), ctx)
 	if err != nil {
 		return err
 	}
@@ -57,8 +55,7 @@ func (pm *sqlPolicyMgr) Create(p redtape.Policy) error {
 		SetActions(p.Actions()).
 		SetScopes(p.Scopes()).
 		SetEffect(string(p.Effect())).
-		AddRoles(roles...).
-		AddConditions(conditions...).
+		AddSubjects(subs...).
 		Save(ctx)
 	if err != nil {
 		return err
@@ -69,48 +66,13 @@ func (pm *sqlPolicyMgr) Create(p redtape.Policy) error {
 
 // Update updates a policy given an ID.
 func (pm *sqlPolicyMgr) Update(p redtape.Policy) error {
-	// Delete current conditions and roles associated with this policy first.
-	ctx := context.Background()
-
-	policies, err := pm.client.PolicyOptions.Query().
-		WithConditions().
-		WithRoles().
-		Where(poent.ID(p.ID())).
-		First(ctx)
-	if err != nil {
-		return err
-	}
-
-	for _, c := range policies.Edges.Conditions {
-		_, err := pm.client.Conditions.Delete().Where(cent.Name(c.Name)).Exec(ctx)
-		if err != nil {
-			return err
-		}
-	}
-
-	for _, r := range policies.Edges.Roles {
-		_, err := pm.client.Roles.Delete().Where(rent.Name(r.Name)).Exec(ctx)
-		if err != nil {
-			return err
-		}
-	}
-
-	// Create the new conditions and roles to associate them back to this policy.
-	roles, conditions, err := pm.createConditionsRoles(p.Roles(), p.Conditions(), ctx)
-	if err != nil {
-		return err
-	}
-
-	// Update policy.
-	_, err = pm.client.PolicyOptions.UpdateOneID(p.ID()).
+	_, err := pm.client.PolicyOptions.UpdateOneID(p.ID()).
 		SetName(p.Name()).
 		SetDescription(p.Description()).
 		SetResources(p.Resources()).
 		SetActions(p.Actions()).
 		SetScopes(p.Scopes()).
 		SetEffect(string(p.Effect())).
-		AddConditions(conditions...).
-		AddRoles(roles...).
 		Save(context.Background())
 	if err != nil {
 		return err
@@ -123,14 +85,20 @@ func (pm *sqlPolicyMgr) Update(p redtape.Policy) error {
 func (pm *sqlPolicyMgr) Get(id string) (redtape.Policy, error) {
 	policy, err := pm.client.PolicyOptions.Query().
 		Where(poent.ID(id)).
-		WithConditions().
-		WithRoles().
+		WithSubjects(func(q *ent.SubjectsQuery) {
+			q.WithConditions()
+		}).
 		First(context.Background())
 	if err != nil {
 		return nil, err
 	}
 
-	return entPolicyToTape(policy), nil
+	rp, err := entPolicyToTape(policy)
+	if err != nil {
+		return nil, err
+	}
+
+	return rp, nil
 }
 
 // Delete will delete a policy from the database given an ID.
@@ -138,12 +106,11 @@ func (pm *sqlPolicyMgr) Delete(id string) error {
 	return pm.client.PolicyOptions.DeleteOneID(id).Exec(context.Background())
 }
 
-func (pm *sqlPolicyMgr) All(limit, offset int) ([]redtape.Policy, error) {
+func (pm *sqlPolicyMgr) All() ([]redtape.Policy, error) {
 	policies, err := pm.client.PolicyOptions.Query().
-		WithConditions().
-		WithRoles().
-		Limit(limit).
-		Offset(offset).
+		WithSubjects(func(q *ent.SubjectsQuery) {
+			q.WithConditions()
+		}).
 		All(context.Background())
 	if err != nil {
 		return nil, err
@@ -151,7 +118,11 @@ func (pm *sqlPolicyMgr) All(limit, offset int) ([]redtape.Policy, error) {
 
 	result := []redtape.Policy{}
 	for _, p := range policies {
-		result = append(result, entPolicyToTape(p))
+		rp, err := entPolicyToTape(p)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, rp)
 	}
 
 	return result, nil
@@ -159,13 +130,14 @@ func (pm *sqlPolicyMgr) All(limit, offset int) ([]redtape.Policy, error) {
 
 // FindByRequest will search the database for a policy that has the exact same data as the request.
 func (pm *sqlPolicyMgr) FindByRequest(req *redtape.Request) ([]redtape.Policy, error) {
-	if req.Resource == "" || req.Action == "" || req.Scope == "" || req.Role == "" {
+	if req.Resource == "" || req.Action == "" || req.Scope == "" || req.Subject.Type() == "" {
 		return nil, errors.New(fmt.Sprintf("Request had an empty field: %v", req))
 	}
 
 	policies, err := pm.client.PolicyOptions.Query().
-		WithConditions().
-		WithRoles().
+		WithSubjects(func(q *ent.SubjectsQuery) {
+			q.WithConditions()
+		}).
 		All(context.Background())
 	if err != nil {
 		return nil, err
@@ -207,17 +179,21 @@ func (pm *sqlPolicyMgr) FindByRequest(req *redtape.Request) ([]redtape.Policy, e
 		}
 
 		if found {
-			for i, role := range p.Edges.Roles {
-				if role.ID == req.Role {
+			for i, sub := range p.Edges.Subjects {
+				if sub.Type == req.Subject.Type() {
 					break
-				} else if i == len(p.Edges.Roles)-1 {
+				} else if i == len(p.Edges.Subjects)-1 {
 					found = false
 				}
 			}
 		}
 
 		if found {
-			result = append(result, entPolicyToTape(p))
+			rp, err := entPolicyToTape(p)
+			if err != nil {
+				return nil, err
+			}
+			result = append(result, rp)
 		}
 	}
 
@@ -226,30 +202,15 @@ func (pm *sqlPolicyMgr) FindByRequest(req *redtape.Request) ([]redtape.Policy, e
 
 // FindByRole will return a policy from the database with the same role name.
 func (pm *sqlPolicyMgr) FindByRole(role string) ([]redtape.Policy, error) {
-	policies, err := pm.client.PolicyOptions.Query().
-		WithConditions().
-		WithRoles(func(q *ent.RolesQuery) {
-			q.Where(rent.Name(role))
-		}).
-		All(context.Background())
-	if err != nil {
-		return nil, err
-	}
-
-	result := []redtape.Policy{}
-
-	for _, p := range policies {
-		result = append(result, entPolicyToTape(p))
-	}
-
-	return result, nil
+	return nil, nil
 }
 
 // FindByResource will return a policy from the database that has the resource in the resources field.
 func (pm *sqlPolicyMgr) FindByResource(resource string) ([]redtape.Policy, error) {
 	policies, err := pm.client.PolicyOptions.Query().
-		WithConditions().
-		WithRoles().
+		WithSubjects(func(q *ent.SubjectsQuery) {
+			q.WithConditions()
+		}).
 		All(context.Background())
 	if err != nil {
 		return nil, err
@@ -267,7 +228,11 @@ func (pm *sqlPolicyMgr) FindByResource(resource string) ([]redtape.Policy, error
 		}
 
 		if found {
-			result = append(result, entPolicyToTape(p))
+			rp, err := entPolicyToTape(p)
+			if err != nil {
+				return nil, err
+			}
+			result = append(result, rp)
 		}
 	}
 
@@ -277,8 +242,9 @@ func (pm *sqlPolicyMgr) FindByResource(resource string) ([]redtape.Policy, error
 // FindByResource will return a policy from the database that has the scope in the scopes field.
 func (pm *sqlPolicyMgr) FindByScope(scope string) ([]redtape.Policy, error) {
 	policies, err := pm.client.PolicyOptions.Query().
-		WithConditions().
-		WithRoles().
+		WithSubjects(func(q *ent.SubjectsQuery) {
+			q.WithConditions()
+		}).
 		All(context.Background())
 	if err != nil {
 		return nil, err
@@ -296,7 +262,11 @@ func (pm *sqlPolicyMgr) FindByScope(scope string) ([]redtape.Policy, error) {
 		}
 
 		if found {
-			result = append(result, entPolicyToTape(p))
+			rp, err := entPolicyToTape(p)
+			if err != nil {
+				return nil, err
+			}
+			result = append(result, rp)
 		}
 	}
 
@@ -304,47 +274,46 @@ func (pm *sqlPolicyMgr) FindByScope(scope string) ([]redtape.Policy, error) {
 }
 
 // Creates Conditions and Roles in the database and returns their ent reference.
-func (pm *sqlPolicyMgr) createConditionsRoles(roles []*redtape.Role, conditions redtape.Conditions,
-	ctx context.Context) ([]*ent.Roles, []*ent.Conditions, error) {
-	entRoles := []*ent.Roles{}
-	entConds := []*ent.Conditions{}
+func (pm *sqlPolicyMgr) createSubjects(subjects []redtape.Subject, ctx context.Context) ([]*ent.Subjects, error) {
+	entSubs := []*ent.Subjects{}
 
-	for _, role := range roles {
-		r, err := pm.client.Roles.Create().
-			SetID(role.ID).
-			SetName(role.Name).
-			SetDescription(role.Description).
+	for _, sub := range subjects {
+		entConds := []*ent.Conditions{}
+
+		for _, cond := range sub.Conditions() {
+			typ, val := getTypeAndVal(cond)
+			opts := map[string]interface{}{
+				"value": val,
+			}
+
+			c, err := pm.client.Conditions.Create().
+				SetName(cond.Name()).
+				SetType(typ).
+				SetOptions(opts).
+				Save(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			entConds = append(entConds, c)
+		}
+
+		s, err := pm.client.Subjects.Create().
+			SetType(sub.Type()).
+			AddConditions(entConds...).
 			Save(ctx)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 
-		entRoles = append(entRoles, r)
+		entSubs = append(entSubs, s)
 	}
 
-	for name, cond := range conditions {
-		typ, val := getTypeAndVal(cond)
-		opts := map[string]interface{}{
-			"value": val,
-		}
-
-		c, err := pm.client.Conditions.Create().
-			SetName(name).
-			SetType(typ).
-			SetOptions(opts).
-			Save(ctx)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		entConds = append(entConds, c)
-	}
-
-	return entRoles, entConds, nil
+	return entSubs, nil
 }
 
 // Translate ent's Policy to redtape's Policy.
-func entPolicyToTape(p *ent.PolicyOptions) redtape.Policy {
+func entPolicyToTape(p *ent.PolicyOptions) (redtape.Policy, error) {
 	po := redtape.PolicyOptions{
 		ID:          p.ID,
 		Name:        p.Name,
@@ -355,38 +324,43 @@ func entPolicyToTape(p *ent.PolicyOptions) redtape.Policy {
 		Effect:      p.Effect,
 	}
 
-	rtRoles := []*redtape.Role{}
-	for _, r := range p.Edges.Roles {
-		rtRoles = append(rtRoles, entRoleToTape(r))
+	rtSubjects := []redtape.Subject{}
+	for _, s := range p.Edges.Subjects {
+		rs, err := entSubjectToTape(s)
+		if err != nil {
+			return nil, err
+		}
+		rtSubjects = append(rtSubjects, rs)
 	}
 
-	rtConds := []redtape.ConditionOptions{}
-	for _, c := range p.Edges.Conditions {
-		rtConds = append(rtConds, entCondToTape(c))
-	}
+	po.Subjects = rtSubjects
 
-	po.Roles = rtRoles
-	po.Conditions = rtConds
-
-	return redtape.MustNewPolicy(redtape.SetPolicyOptions(po))
+	return redtape.MustNewPolicy(redtape.SetPolicyOptions(po)), nil
 }
 
 // Translate ent's Role to redtape's Role.
-func entRoleToTape(role *ent.Roles) *redtape.Role {
-	return &redtape.Role{
-		ID:          role.ID,
-		Name:        role.Name,
-		Description: role.Description,
+func entSubjectToTape(subject *ent.Subjects) (redtape.Subject, error) {
+	s, err := redtape.NewSubject(subject.Type, redtape.WithConditions(entCondsToTape(subject.Edges.Conditions)...))
+	if err != nil {
+		return nil, err
 	}
+
+	return s, nil
 }
 
 // Translate ent's Conditions to redtape's Conditions.
-func entCondToTape(cond *ent.Conditions) redtape.ConditionOptions {
-	return redtape.ConditionOptions{
-		Name:    cond.Name,
-		Type:    cond.Type,
-		Options: cond.Options,
+func entCondsToTape(conds []*ent.Conditions) []redtape.ConditionOptions {
+	res := []redtape.ConditionOptions{}
+
+	for _, c := range conds {
+		res = append(res, redtape.ConditionOptions{
+			Name:    c.Name,
+			Type:    c.Type,
+			Options: c.Options,
+		})
 	}
+
+	return res
 }
 
 // Returns condition's type and its value.

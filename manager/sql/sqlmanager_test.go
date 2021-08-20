@@ -20,6 +20,15 @@ func TestSqlManagerSuite(t *testing.T) {
 func (s *SqlManagerSuite) TestAPolicyOptions() {
 	id := uuid.NewString()
 
+	sub, err := redtape.NewSubject("test_subject", redtape.WithConditions(redtape.ConditionOptions{
+		Name: "bool",
+		Type: "bool",
+		Options: map[string]interface{}{
+			"value": true,
+		},
+	}))
+	s.Require().NoError(err)
+
 	opts := redtape.NewPolicyOptions(
 		redtape.PolicyID(id),
 		redtape.PolicyName("test_policy"),
@@ -27,14 +36,7 @@ func (s *SqlManagerSuite) TestAPolicyOptions() {
 		redtape.SetActions("create", "delete", "update", "read"),
 		redtape.SetResources("database"),
 		redtape.PolicyAllow(),
-		redtape.WithCondition(redtape.ConditionOptions{
-			Name: "test_cond",
-			Type: "bool",
-			Options: map[string]interface{}{
-				"value": true,
-			},
-		}),
-		redtape.WithRole(redtape.NewRole("allow_test")),
+		redtape.WithSubject(sub),
 	)
 
 	// get sql manager
@@ -64,14 +66,7 @@ func (s *SqlManagerSuite) TestAPolicyOptions() {
 		redtape.SetActions("update"),
 		redtape.SetResources("database", "another resource"),
 		redtape.PolicyDeny(),
-		redtape.WithCondition(redtape.ConditionOptions{
-			Name: "updated condition name",
-			Type: "bool",
-			Options: map[string]interface{}{
-				"value": false,
-			},
-		}),
-		redtape.WithRole(redtape.NewRole("updated role")),
+		redtape.WithSubject(sub),
 	)
 
 	updatedPolicy := redtape.MustNewPolicy(redtape.SetPolicyOptions(uptOpts))
@@ -91,14 +86,6 @@ func (s *SqlManagerSuite) TestAPolicyOptions() {
 		redtape.SetActions("create", "delete", "update", "read"),
 		redtape.SetResources("database"),
 		redtape.PolicyAllow(),
-		redtape.WithCondition(redtape.ConditionOptions{
-			Name: "test_cond",
-			Type: "bool",
-			Options: map[string]interface{}{
-				"value": true,
-			},
-		}),
-		redtape.WithRole(redtape.NewRole("allow_test")),
 	)
 
 	delPolicy := redtape.MustNewPolicy(redtape.SetPolicyOptions(delOpts))
@@ -110,13 +97,22 @@ func (s *SqlManagerSuite) TestAPolicyOptions() {
 	s.Require().Error(err)
 
 	// all policy
-	policies, err := man.All(10, 0)
+	policies, err := man.All()
 	s.Require().NoError(err)
 	s.Require().Greater(len(policies), 0, "should only be at least one policy")
 }
 
 func (s *SqlManagerSuite) TestBPolicyOptions() {
 	id := uuid.NewString()
+
+	sub, err := redtape.NewSubject("test_subject", redtape.WithConditions(redtape.ConditionOptions{
+		Name: "bool",
+		Type: "bool",
+		Options: map[string]interface{}{
+			"value": true,
+		},
+	}))
+	s.Require().NoError(err)
 
 	opts := redtape.NewPolicyOptions(
 		redtape.PolicyID(id),
@@ -126,14 +122,7 @@ func (s *SqlManagerSuite) TestBPolicyOptions() {
 		redtape.SetResources("Test Resource"),
 		redtape.SetScopes("Test Scope"),
 		redtape.PolicyAllow(),
-		redtape.WithCondition(redtape.ConditionOptions{
-			Name: "test_cond",
-			Type: "bool",
-			Options: map[string]interface{}{
-				"value": true,
-			},
-		}),
-		redtape.WithRole(redtape.NewRole("Test Role")),
+		redtape.WithSubject(sub),
 	)
 
 	// get sql manager
@@ -156,7 +145,12 @@ func (s *SqlManagerSuite) TestBPolicyOptions() {
 	s.Require().True(reflect.DeepEqual(policy, getPolicy))
 
 	// find by request
-	req := redtape.NewRequest(opts.Resources[0], opts.Actions[0], opts.Roles[0].ID, opts.Scopes[0])
+	req := redtape.NewRequest(
+		redtape.RequestResource(opts.Resources[0]),
+		redtape.RequestAction(opts.Actions[0]),
+		redtape.RequestScope(opts.Scopes[0]),
+		redtape.RequestSubject(sub),
+	)
 
 	policies, err := man.FindByRequest(req)
 	s.Require().NoError(err)
@@ -172,15 +166,15 @@ func (s *SqlManagerSuite) TestBPolicyOptions() {
 	s.Require().Equal(len(policies), 0, "should not have found a policy")
 
 	// find by random request
-	policies, err = man.FindByRequest(redtape.NewRequest(opts.Resources[0], "random", "random", "random"))
+	policies, err = man.FindByRequest(redtape.NewRequest(
+		redtape.RequestResource(opts.Resources[0]),
+		redtape.RequestAction("random"),
+		redtape.RequestScope("random"),
+		redtape.RequestSubject(sub),
+	))
 	s.Require().NoError(err)
 
-	s.Require().Equal(len(policies), 0, "should not have found a policy 2")
-
-	policies, err = man.FindByRequest(redtape.NewRequest("random", opts.Actions[0], "random", "random"))
-	s.Require().NoError(err)
-
-	s.Require().Equal(len(policies), 0, "should not have found a policy 3")
+	s.Require().Equal(len(policies), 0, "should not have found a policy")
 
 	// find by resource
 	policies, err = man.FindByResource(req.Resource)
