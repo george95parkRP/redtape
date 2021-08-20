@@ -38,22 +38,20 @@ type Policy interface {
 	Resources() []string
 	Actions() []string
 	Scopes() []string
-	Conditions() Conditions
 	Effect() PolicyEffect
 	Context() context.Context
 }
 
 type policy struct {
-	id         string
-	name       string
-	desc       string
-	subjects   []Subject
-	resources  []string
-	actions    []string
-	scopes     []string
-	conditions Conditions
-	effect     PolicyEffect
-	ctx        context.Context
+	id        string
+	name      string
+	desc      string
+	subjects  []Subject
+	resources []string
+	actions   []string
+	scopes    []string
+	effect    PolicyEffect
+	ctx       context.Context
 }
 
 // NewPolicy returns a default policy implementation from a set of provided options.
@@ -71,13 +69,6 @@ func NewPolicy(opts ...PolicyOption) (Policy, error) {
 		effect:    NewPolicyEffect(o.Effect),
 		ctx:       o.Context,
 	}
-
-	conds, err := NewConditions(o.Conditions, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	p.conditions = conds
 
 	return p, nil
 }
@@ -107,19 +98,6 @@ func (p *policy) MarshalJSON() ([]byte, error) {
 	}
 
 	structs.DefaultTagName = "json"
-
-	copts := make([]ConditionOptions, 0, len(p.conditions))
-	for k, c := range p.conditions {
-		cov := structs.Map(c)
-		co := ConditionOptions{
-			Name:    k,
-			Type:    c.Name(),
-			Options: cov,
-		}
-		copts = append(copts, co)
-	}
-
-	opts.Conditions = copts
 
 	return json.Marshal(opts)
 }
@@ -163,11 +141,6 @@ func (p *policy) Context() context.Context {
 	return p.ctx
 }
 
-// Conditions returns the Conditions used to apply the policy.
-func (p *policy) Conditions() Conditions {
-	return p.conditions
-}
-
 // Effect returns the configured PolicyEffect.
 func (p *policy) Effect() PolicyEffect {
 	return p.effect
@@ -175,16 +148,15 @@ func (p *policy) Effect() PolicyEffect {
 
 // PolicyOptions struct allows different Policy implementations to be configured with marshalable data.
 type PolicyOptions struct {
-	ID          string             `json:"id"`
-	Name        string             `json:"name"`
-	Description string             `json:"description"`
-	Subjects    []Subject          `json:"roles"`
-	Resources   []string           `json:"resources"`
-	Actions     []string           `json:"actions"`
-	Scopes      []string           `json:"scopes"`
-	Conditions  []ConditionOptions `json:"conditions"`
-	Effect      string             `json:"effect"`
-	Context     context.Context    `json:"-"`
+	ID          string          `json:"id"`
+	Name        string          `json:"name"`
+	Description string          `json:"description"`
+	Subjects    []Subject       `json:"roles"`
+	Resources   []string        `json:"resources"`
+	Actions     []string        `json:"actions"`
+	Scopes      []string        `json:"scopes"`
+	Effect      string          `json:"effect"`
+	Context     context.Context `json:"-"`
 }
 
 // PolicyOption is a typed function allowing updates to PolicyOptions through functional options.
@@ -273,13 +245,6 @@ func SetScopes(s ...string) PolicyOption {
 func SetContext(ctx context.Context) PolicyOption {
 	return func(o *PolicyOptions) {
 		o.Context = ctx
-	}
-}
-
-// WithCondition adds a Condition to the Conditions option.
-func WithCondition(co ConditionOptions) PolicyOption {
-	return func(o *PolicyOptions) {
-		o.Conditions = append(o.Conditions, co)
 	}
 }
 
