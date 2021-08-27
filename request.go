@@ -9,7 +9,7 @@ type Request struct {
 	Resource string          `json:"resource"`
 	Action   string          `json:"action"`
 	Scope    string          `json:"scope"`
-	Subject  Subject         `json:"subject"`
+	Subjects []string        `json:"subjects"`
 	Context  context.Context `json:"-"`
 }
 
@@ -97,9 +97,9 @@ func RequestAction(action string) RequestOption {
 	}
 }
 
-func RequestSubject(sub Subject) RequestOption {
+func RequestSubjects(subs ...string) RequestOption {
 	return func(r *Request) {
-		r.Subject = sub
+		r.Subjects = subs
 	}
 }
 
