@@ -249,8 +249,8 @@ func SetContext(ctx context.Context) PolicyOption {
 }
 
 // WithSubject adds a Subject to the Subjects option.
-func WithSubject(s Subject) PolicyOption {
+func WithSubjects(s ...Subject) PolicyOption {
 	return func(o *PolicyOptions) {
-		o.Subjects = append(o.Subjects, s)
+		o.Subjects = s
 	}
 }
