@@ -20,14 +20,23 @@ func (s *EngineSuite) TestAEngine() {
 	engine := NewEngine(NewPolicyManager())
 
 	sub, err := NewSubject(
-		"policy_test_subject",
-		WithConditions(ConditionOptions{
-			Name: "match_me",
-			Type: "bool",
-			Options: map[string]interface{}{
-				"value": true,
+		"rpx.example.api.hello",
+		WithConditions([]ConditionOptions{
+			{
+				Name: "service",
+				Type: "string_equals_condition",
+				Options: map[string]interface{}{
+					"equals": "rpx.example.rpc.hello",
+				},
 			},
-		}),
+			{
+				Name: "match_me",
+				Type: "bool",
+				Options: map[string]interface{}{
+					"value": true,
+				},
+			},
+		}...),
 	)
 	s.Require().NoError(err)
 
@@ -39,21 +48,19 @@ func (s *EngineSuite) TestAEngine() {
 		SetResources("test_resource"),
 		SetActions("create", "delete"),
 		SetScopes("test_scope"),
-		WithSubject(sub),
+		WithSubjects(sub),
 	)
 
 	err = engine.Grant(MustNewPolicy(SetPolicyOptions(po)))
-	s.Require().NoError(err)
-
-	reqSub, err := NewSubject("policy_test_subject")
 	s.Require().NoError(err)
 
 	req := &Request{
 		Resource: "test_resource",
 		Action:   "create",
 		Scope:    "test_scope",
-		Subject:  reqSub,
+		Subjects: []string{"rpx.example.api.hello"},
 		Context: NewRequestContext(context.TODO(), map[string]interface{}{
+			"service":  "rpx.example.rpc.hello",
 			"match_me": true,
 		}),
 	}
@@ -61,14 +68,11 @@ func (s *EngineSuite) TestAEngine() {
 	err = engine.Verify(req)
 	s.Require().NoError(err, "should be allowed")
 
-	fakeSub, err := NewSubject("fake_test_subject")
-	s.Require().NoError(err)
-
 	fakeReq := &Request{
 		Resource: "test_resource",
 		Action:   "create",
 		Scope:    "test_scope",
-		Subject:  fakeSub,
+		Subjects: []string{"fake_test_subject"},
 		Context: NewRequestContext(context.TODO(), map[string]interface{}{
 			"match_me": true,
 		}),

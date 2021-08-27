@@ -36,7 +36,7 @@ func (s *SqlManagerSuite) TestAPolicyOptions() {
 		redtape.SetActions("create", "delete", "update", "read"),
 		redtape.SetResources("database"),
 		redtape.PolicyAllow(),
-		redtape.WithSubject(sub),
+		redtape.WithSubjects(sub),
 	)
 
 	// get sql manager
@@ -66,7 +66,7 @@ func (s *SqlManagerSuite) TestAPolicyOptions() {
 		redtape.SetActions("update"),
 		redtape.SetResources("database", "another resource"),
 		redtape.PolicyDeny(),
-		redtape.WithSubject(sub),
+		redtape.WithSubjects(sub),
 	)
 
 	updatedPolicy := redtape.MustNewPolicy(redtape.SetPolicyOptions(uptOpts))
@@ -122,7 +122,7 @@ func (s *SqlManagerSuite) TestBPolicyOptions() {
 		redtape.SetResources("Test Resource"),
 		redtape.SetScopes("Test Scope"),
 		redtape.PolicyAllow(),
-		redtape.WithSubject(sub),
+		redtape.WithSubjects(sub),
 	)
 
 	// get sql manager
@@ -149,7 +149,7 @@ func (s *SqlManagerSuite) TestBPolicyOptions() {
 		redtape.RequestResource(opts.Resources[0]),
 		redtape.RequestAction(opts.Actions[0]),
 		redtape.RequestScope(opts.Scopes[0]),
-		redtape.RequestSubject(sub),
+		redtape.RequestSubjects("test_subject"),
 	)
 
 	policies, err := man.FindByRequest(req)
@@ -170,7 +170,7 @@ func (s *SqlManagerSuite) TestBPolicyOptions() {
 		redtape.RequestResource(opts.Resources[0]),
 		redtape.RequestAction("random"),
 		redtape.RequestScope("random"),
-		redtape.RequestSubject(sub),
+		redtape.RequestSubjects("test_subject"),
 	))
 	s.Require().NoError(err)
 

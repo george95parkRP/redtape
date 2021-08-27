@@ -40,7 +40,7 @@ func (s *RedtapeSuite) TestBPolicies() {
 				SetActions("create", "delete", "update", "read"),
 				SetResources("database"),
 				PolicyAllow(),
-				WithSubject(sub),
+				WithSubjects(sub),
 			),
 		},
 	}
@@ -60,13 +60,10 @@ func (s *RedtapeSuite) TestCEnforce() {
 	m := NewMatcher()
 	pm := NewPolicyManager()
 
-	// allow := role.New("test.A")
-	// deny := role.New("test.B")
-
-	subA, err := NewSubject(uuid.NewString())
+	subA, err := NewSubject("subA")
 	s.Require().NoError(err)
 
-	subB, err := NewSubject(uuid.NewString())
+	subB, err := NewSubject("subB")
 	s.Require().NoError(err)
 
 	popts := []PolicyOptions{
@@ -119,7 +116,7 @@ func (s *RedtapeSuite) TestCEnforce() {
 		Resource: "test_resource",
 		Action:   "test",
 		Scope:    "test_scope",
-		Subject:  subA,
+		Subjects: []string{"subA"},
 		Context: NewRequestContext(context.TODO(), map[string]interface{}{
 			"match_me": true,
 		}),
@@ -128,7 +125,7 @@ func (s *RedtapeSuite) TestCEnforce() {
 	err = e.Enforce(req)
 	s.Require().NoError(err, "should be allowed")
 
-	req.Subject = subB
+	req.Subjects = []string{"subB"}
 
 	err = e.Enforce(req)
 	s.Require().Error(err, "should be denied")
