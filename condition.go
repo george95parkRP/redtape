@@ -2,6 +2,7 @@ package redtape
 
 import (
 	"fmt"
+	"net"
 
 	"github.com/mitchellh/mapstructure"
 )
@@ -21,6 +22,12 @@ func NewConditionRegistry(conds ...map[string]ConditionBuilder) ConditionRegistr
 		},
 		new(SubjectEqualsCondition).Name(): func() Condition {
 			return new(SubjectEqualsCondition)
+		},
+		new(StringEqualsCondition).Name(): func() Condition {
+			return new(StringEqualsCondition)
+		},
+		new(CIDRCondition).Name(): func() Condition {
+			return new(CIDRCondition)
 		},
 	}
 
@@ -114,16 +121,65 @@ func (c *SubjectEqualsCondition) Name() string {
 
 // Meets evaluates true when the subject val matches Request#Subject.
 func (c *SubjectEqualsCondition) Meets(val interface{}, r *Request) bool {
-	switch v := val.(type) {
-	case string:
-		return v == r.Subject.Type()
-	case []string:
-		for _, s := range v {
-			if s == r.Subject.Type() {
-				return true
+	v, ok := val.([]string)
+	if !ok {
+		return false
+	}
+
+	for _, sub := range v {
+		found := false
+		for _, rs := range r.Subjects {
+			if rs == sub {
+				found = true
+				break
 			}
+		}
+
+		if !found {
+			return false
 		}
 	}
 
-	return false
+	return true
+}
+
+type StringEqualsCondition struct {
+	Equals string `json:"equals"`
+}
+
+func (c *StringEqualsCondition) Name() string {
+	return "string_equals_condition"
+}
+
+func (c *StringEqualsCondition) Meets(val interface{}, _ *Request) bool {
+	s, ok := val.(string)
+
+	return ok && s == c.Equals
+}
+
+type CIDRCondition struct {
+	CIDR string `json:"cidr"`
+}
+
+func (c *CIDRCondition) Meets(value interface{}, _ *Request) bool {
+	ips, ok := value.(string)
+	if !ok {
+		return false
+	}
+
+	_, cidrnet, err := net.ParseCIDR(c.CIDR)
+	if err != nil {
+		return false
+	}
+
+	ip := net.ParseIP(ips)
+	if ip == nil {
+		return false
+	}
+
+	return cidrnet.Contains(ip)
+}
+
+func (c *CIDRCondition) Name() string {
+	return "cidr_condition"
 }
