@@ -8,6 +8,7 @@ import (
 	"github.com/blushft/redtape"
 	"github.com/blushft/redtape/manager/sql/ent"
 	poent "github.com/blushft/redtape/manager/sql/ent/policyoptions"
+	"github.com/blushft/redtape/match"
 	_ "github.com/lib/pq"
 )
 
@@ -130,7 +131,7 @@ func (pm *sqlPolicyMgr) All() ([]redtape.Policy, error) {
 
 // FindByRequest will search the database for a policy that has the exact same data as the request.
 func (pm *sqlPolicyMgr) FindByRequest(req *redtape.Request) ([]redtape.Policy, error) {
-	if req.Resource == "" || req.Action == "" || req.Scope == "" || req.Subject.Type() == "" {
+	if req.Resource == "" || req.Action == "" || req.Scope == "" || len(req.Subjects) < 1 {
 		return nil, errors.New(fmt.Sprintf("Request had an empty field: %v", req))
 	}
 
@@ -144,60 +145,55 @@ func (pm *sqlPolicyMgr) FindByRequest(req *redtape.Request) ([]redtape.Policy, e
 	}
 
 	result := []redtape.Policy{}
-
-	// Traverse each policy.
 	for _, p := range policies {
-		found := false
-
-		// Check if any of the resources are the same.
-		for _, r := range p.Resources {
-			if r == req.Resource {
-				found = true
-				break
-			}
+		if found := findByResource(req.Resource, p.Resources); !found {
+			continue
 		}
 
-		// If any time the req's data isn't found, we can just not return this policy.
-		if found {
-			for i, a := range p.Actions {
-				if a == req.Action {
-					break
-				} else if i == len(p.Actions)-1 {
-					found = false
-				}
-			}
+		if found := findByScope(req.Scope, p.Scopes); !found {
+			continue
 		}
 
-		if found {
-			for i, s := range p.Scopes {
-				if s == req.Scope {
-					break
-				} else if i == len(p.Scopes)-1 {
-					found = false
-				}
-			}
+		if found := findByAction(req.Action, p.Actions); !found {
+			continue
 		}
 
-		if found {
-			for i, sub := range p.Edges.Subjects {
-				if sub.Type == req.Subject.Type() {
-					break
-				} else if i == len(p.Edges.Subjects)-1 {
-					found = false
-				}
-			}
+		rp, err := entPolicyToTape(p)
+		if err != nil {
+			return nil, err
 		}
-
-		if found {
-			rp, err := entPolicyToTape(p)
-			if err != nil {
-				return nil, err
-			}
-			result = append(result, rp)
-		}
+		result = append(result, rp)
 	}
 
 	return result, nil
+}
+
+func findByAction(act string, actions []string) bool {
+	for _, a := range actions {
+		if match.Wildcard(a, act) {
+			return true
+		}
+	}
+
+	return false
+}
+func findByResource(res string, resources []string) bool {
+	for _, r := range resources {
+		if match.Wildcard(r, res) {
+			return true
+		}
+	}
+
+	return false
+}
+func findByScope(scope string, scopes []string) bool {
+	for _, s := range scopes {
+		if match.Wildcard(s, scope) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // FindByRole will return a policy from the database with the same role name.
