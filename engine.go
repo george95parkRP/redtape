@@ -12,6 +12,7 @@ type Engine interface {
 	List() ([]Policy, error)
 
 	RegisterCondition(string, ConditionBuilder) error
+	ConditionRegistry() ConditionRegistry
 }
 
 type engine struct {
@@ -60,6 +61,10 @@ func (e *engine) RegisterCondition(name string, ctor ConditionBuilder) error {
 	e.conds[name] = ctor
 
 	return nil
+}
+
+func (e *engine) ConditionRegistry() ConditionRegistry {
+	return e.conds
 }
 
 type EngineOptions struct {
