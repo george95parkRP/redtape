@@ -14,16 +14,11 @@ func NewHTTPMiddleware(e redtape.Enforcer, h http.Handler) http.Handler {
 			meta[k] = r.Header.Get(k)
 		}
 
-		rs, err := requestSubject(r)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-
 		req := redtape.NewRequest(
 			redtape.RequestContext(r.Context(), meta),
 			redtape.RequestResource(r.URL.Path),
 			redtape.RequestAction(r.Method),
-			redtape.RequestSubject(rs),
+			redtape.RequestSubjects(r.RemoteAddr),
 		)
 
 		if err := e.Enforce(req); err != nil {
