@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"sync"
 	"time"
+
+	"github.com/blushft/redtape/match"
 )
 
 // PolicyManager contains methods to allow query, update, and removal of policies.
@@ -127,7 +129,7 @@ func (m *defaultPolicyManager) FindByRequest(r *Request) ([]Policy, error) {
 
 func findByAction(act string, actions []string) bool {
 	for _, a := range actions {
-		if a == act {
+		if match.Wildcard(a, act) {
 			return true
 		}
 	}
@@ -158,7 +160,7 @@ func (m *defaultPolicyManager) FindByResource(res string) ([]Policy, error) {
 
 func findByResource(res string, resources []string) bool {
 	for _, r := range resources {
-		if r == res {
+		if match.Wildcard(r, res) {
 			return true
 		}
 	}
@@ -184,7 +186,7 @@ func (m *defaultPolicyManager) FindByScope(scope string) ([]Policy, error) {
 
 func findByScope(scope string, scopes []string) bool {
 	for _, s := range scopes {
-		if s == scope {
+		if match.Wildcard(s, scope) {
 			return true
 		}
 	}
