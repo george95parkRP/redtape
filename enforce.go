@@ -108,11 +108,11 @@ func (e *enforcer) evalPolicy(r *Request, p Policy) (bool, error) {
 
 	// find the subject
 	// check conditions
-	// TODO: could there be more than one subject with the same type ?
 	condMeets := false
-	for _, sub := range p.Subjects() {
-		if sub.Type() == r.Subject.Type() {
-			if sub.Conditions().Meets(r) {
+	for _, sr := range r.Subjects {
+		sub, found := findSubject(p.Subjects(), sr)
+		if found {
+			if len(sub.Conditions()) == 0 || sub.Conditions().Meets(r) {
 				condMeets = true
 				break
 			}
@@ -124,6 +124,16 @@ func (e *enforcer) evalPolicy(r *Request, p Policy) (bool, error) {
 	}
 
 	return true, nil
+}
+
+func findSubject(subjects []Subject, sub string) (Subject, bool) {
+	for _, s := range subjects {
+		if s.MatchSubject(sub) {
+			return s, true
+		}
+	}
+
+	return nil, false
 }
 
 func (e *enforcer) auditReq(req *Request) {
